@@ -1,0 +1,32 @@
+{
+    "basic_commands": {
+        "greeting": ["hey aegis", "hello aegis", "wake up", "are you there"],
+        "goodbye": ["go to sleep", "stop listening", "goodbye aegis"],
+        "status": ["how are you", "system status", "what's up"]
+    },
+    
+    "application_commands": {
+        "open_notepad": ["open notepad", "start notepad", "launch notepad"],
+        "open_word": ["open word", "open microsoft word", "start ms word"],
+        "open_browser": ["open browser", "open chrome", "start browser"],
+        "open_calculator": ["open calculator", "launch calculator"]
+    },
+    
+    "system_commands": {
+        "shutdown": ["shutdown laptop", "turn off computer", "power off"],
+        "restart": ["restart laptop", "reboot computer"],
+        "lock": ["lock computer", "lock screen", "lock workstation"]
+    },
+    
+    "routine_commands": {
+        "study_cyber": ["study cyber", "start cyber study", "begin security study"],
+        "work_mode": ["start working", "work mode", "begin work session"]
+    },
+    
+    "security_commands": {
+        "security_level_1": ["security level one", "normal mode", "disable security"],
+        "security_level_2": ["security level two", "restricted mode", "medium security"],
+        "security_level_3": ["security level three", "lockdown mode", "maximum security"],
+        "panic_mode": ["panic", "emergency", "hide everything", "red alert"]
+    }
+}

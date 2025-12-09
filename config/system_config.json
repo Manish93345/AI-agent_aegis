@@ -1,0 +1,32 @@
+{
+    "paths": {
+        "logs_directory": "data/logs/",
+        "encrypted_directory": "data/encrypted/",
+        "models_directory": "data/models/",
+        "backup_directory": "data/backups/",
+        "temp_directory": "data/temp/"
+    },
+    
+    "voice_settings": {
+        "sample_rate": 16000,
+        "chunk_size": 1024,
+        "record_seconds": 5,
+        "energy_threshold": 300,
+        "pause_threshold": 0.8
+    },
+    
+    "security_settings": {
+        "max_auth_attempts": 3,
+        "lockout_minutes": 15,
+        "auto_lock_minutes": 30,
+        "panic_phrase": "red alert red alert"
+    },
+    
+    "performance": {
+        "use_gpu": true,
+        "gpu_device_id": 0,
+        "max_memory_mb": 2048,
+        "thread_count": 4,
+        "priority": "high"
+    }
+}

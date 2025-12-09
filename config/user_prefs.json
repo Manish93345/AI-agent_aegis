@@ -1,0 +1,37 @@
+{
+    "user_info": {
+        "name": "Your_Name",
+        "voice_sample_path": "data/voice_samples/",
+        "auth_method": "voice+pin",
+        "backup_location": "D:/AEGIS_Backups/"
+    },
+    
+    "study_cyber_routine": {
+        "apps_to_open": [
+            {"name": "Microsoft Word", "path": "C:/Program Files/Microsoft Office/root/Office16/WINWORD.EXE"},
+            {"name": "Chrome", "path": "C:/Program Files/Google/Chrome/Application/chrome.exe"},
+            {"name": "VS Code", "path": "C:/Users/[USER]/AppData/Local/Programs/Microsoft VS Code/Code.exe"}
+        ],
+        "urls_to_open": [
+            "https://tryhackme.com",
+            "https://hackthebox.com",
+            "https://cybrary.it"
+        ],
+        "folders_to_open": [
+            "C:/Users/[USER]/Documents/Cyber Security",
+            "C:/Users/[USER]/Desktop/Study Materials"
+        ],
+        "background_music": "https://youtube.com/playlist?list=PLkd-lH9-8EJVtcCMbApQ_5uANEUvu7sAn&si=t4ErGOf6IkFBm_M-",
+        "notes_file": "C:/Users/[USER]/Documents/Cyber Security/notes.docx"
+    },
+    
+    "system_preferences": {
+        "wake_word": "hey aegis",
+        "response_voice": "female",
+        "response_speed": 150,
+        "auto_backup": true,
+        "backup_interval_hours": 24,
+        "log_retention_days": 30,
+        "gpu_acceleration": true
+    }
+}

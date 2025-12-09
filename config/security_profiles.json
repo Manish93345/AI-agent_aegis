@@ -1,0 +1,47 @@
+{
+    "level_1": {
+        "name": "Normal Mode",
+        "description": "All features accessible, minimal monitoring",
+        "actions": {
+            "file_access": "unrestricted",
+            "app_restrictions": "none",
+            "network_access": "full",
+            "monitoring": "basic_logging",
+            "encryption": "none"
+        }
+    },
+    
+    "level_2": {
+        "name": "Restricted Mode",
+        "description": "Sensitive files protected, suspicious activity monitored",
+        "actions": {
+            "file_access": "protected_folders_locked",
+            "app_restrictions": ["taskmgr", "cmd", "powershell", "regedit"],
+            "network_access": "block_suspicious_sites",
+            "monitoring": "detailed_logging",
+            "encryption": "temporary_files"
+        },
+        "protected_folders": [
+            "C:/Users/[USER]/Documents/Important",
+            "C:/Users/[USER]/Desktop/Private",
+            "D:/Work/Confidential"
+        ]
+    },
+    
+    "level_3": {
+        "name": "Lockdown Mode",
+        "description": "Maximum security - encryption, app blocking, network cut",
+        "actions": {
+            "file_access": "encrypt_and_lock",
+            "app_restrictions": "all_non_essential",
+            "network_access": "disable_all",
+            "monitoring": "continuous_recording",
+            "encryption": "full_encryption",
+            "usb_ports": "disable",
+            "webcam": "disable",
+            "microphone": "disable"
+        },
+        "essential_apps": ["notepad", "wordpad", "calculator"],
+        "encryption_key_path": "data/encrypted/master_key.aes"
+    }
+}
