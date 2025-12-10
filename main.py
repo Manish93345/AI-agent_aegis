@@ -156,6 +156,10 @@ class LISA:
         if not self.initialize_voice_system():
             print(f"{Colors.WARNING}Voice system initialization failed{Colors.ENDC}")
             print(f"{Colors.WARNING}Continuing without voice control...{Colors.ENDC}")
+
+        # Initialize automation system
+        if not self.initialize_automation_system():
+            print(f"{Colors.WARNING}Automation system initialization failed{Colors.ENDC}")
         
         # Display system info
         print(f"\n{Colors.MAGENTA}{'='*60}{Colors.ENDC}")
@@ -291,26 +295,50 @@ class LISA:
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
         
+        elif "study cyber" in command_text or "cyber mode" in command_text:
+            response = "Starting study cyber routine. Opening applications and study materials."
+            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(response)
+            
+            # Execute study cyber routine
+            if hasattr(self, 'automation_engine'):
+                success = self.automation_engine.execute_study_cyber_routine()
+                if success:
+                    response = "Study cyber routine completed successfully!"
+                else:
+                    response = "Some parts of the study cyber routine failed."
+                print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+                if hasattr(self, 'response_engine'):
+                    self.response_engine.speak(response)
+        
+        elif "open" in command_text:
+            # Extract app name
+            app_name = command_text.replace("open", "").strip()
+            
+            if app_name:
+                response = f"Opening {app_name}..."
+                print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+                if hasattr(self, 'response_engine'):
+                    self.response_engine.speak(response)
+                
+                # Open application
+                if hasattr(self, 'automation_engine'):
+                    success = self.automation_engine.open_application(app_name)
+                    if success:
+                        response = f"{app_name} opened successfully."
+                    else:
+                        response = f"Failed to open {app_name}."
+                    print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+                    if hasattr(self, 'response_engine'):
+                        self.response_engine.speak(response)
+        
         elif any(word in command_text for word in ["stop", "exit", "quit", "goodbye", "sleep"]):
             response = f"Goodbye! Shutting down {self.assistant_name}."
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
             self.is_running = False
-        
-        elif "open" in command_text:
-            # Basic app opening (will be enhanced in Phase 2)
-            app_name = command_text.replace("open", "").strip()
-            if app_name:
-                response = f"I'll open {app_name} for you. This feature will be fully implemented in Phase 2."
-                print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
-                if hasattr(self, 'response_engine'):
-                    self.response_engine.speak(response)
-            else:
-                response = "What would you like me to open?"
-                print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
-                if hasattr(self, 'response_engine'):
-                    self.response_engine.speak(response)
         
         else:
             response = f"I heard: {command_text}. I'm still learning, but I'll get better!"
@@ -409,6 +437,21 @@ class LISA:
         self.is_running = False
         print(f"{Colors.MAGENTA}✓ {self.assistant_name} System Shutdown Complete{Colors.ENDC}")
         self.logger.info(f"{self.assistant_name} shutdown complete")
+
+    def initialize_automation_system(self):
+        """Initialize the automation system"""
+        self.logger.info("Initializing automation system...")
+        
+        try:
+            from core.automation_engine import AutomationEngine
+            
+            self.automation_engine = AutomationEngine()
+            self.logger.info(f"{Colors.GREEN}✓ Automation system ready{Colors.ENDC}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Automation system initialization failed: {e}")
+            return False
 
 
 def main():

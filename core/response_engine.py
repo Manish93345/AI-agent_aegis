@@ -138,13 +138,17 @@ class ResponseEngine:
             self.logger.error(f"{Colors.FAIL}✗ Failed to initialize Response Engine: {e}{Colors.ENDC}")
             return False
     
+
     def speak(self, text: str, priority: int = 0):
         """Add text to speech queue"""
-        self.response_queue.put({
-            "text": text,
-            "priority": priority,
-            "timestamp": time.time()
-        })
+        if self.engine:
+            self.response_queue.put({
+                "text": text,
+                "priority": priority,
+                "timestamp": time.time()
+            })
+        else:
+            self.logger.warning("TTS engine not initialized")
     
     def speak_immediate(self, text: str):
         """Speak immediately (blocks until done)"""
