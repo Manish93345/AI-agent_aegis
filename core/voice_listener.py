@@ -35,7 +35,7 @@ class VoiceListener:
     """Main voice listening and recognition class"""
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.logger = logging.getLogger("AEGIS.VoiceListener")
+        self.logger = logging.getLogger("LISA.VoiceListener")
         self.state = ListeningState.SLEEPING
         
         # Audio configuration
@@ -128,24 +128,33 @@ class VoiceListener:
                 with self.microphone as source:
                     if self.state == ListeningState.SLEEPING:
                         self.logger.debug("Sleeping - listening for wake word...")
-                    else:
+                    elif self.state == ListeningState.LISTENING:
                         self.logger.debug("Awake - listening for command...")
                     
-                    audio = self.recognizer.listen(
-                        source,
-                        timeout=1,  # Shorter timeout to be more responsive
-                        phrase_time_limit=5  # Limit phrase length
-                    )
+                    # Listen with timeout based on state
+                    if self.state == ListeningState.SLEEPING:
+                        # When sleeping, listen briefly for wake word
+                        audio = self.recognizer.listen(
+                            source,
+                            timeout=1,
+                            phrase_time_limit=2
+                        )
+                    else:
+                        # When awake, listen longer for commands
+                        audio = self.recognizer.listen(
+                            source,
+                            timeout=3,
+                            phrase_time_limit=5
+                        )
                 
                 # Convert speech to text
-                self.state = ListeningState.PROCESSING
                 text = self._recognize_speech(audio)
                 
                 if text:
                     text = text.lower().strip()
                     self.logger.debug(f"Heard: '{text}'")
                     
-                    # Check for wake word (anytime)
+                    # Check for wake word (anytime, even when already listening)
                     if self._is_wake_word(text):
                         self._handle_wake_word(text)
                     # If we're in LISTENING state, treat everything as command
@@ -155,11 +164,9 @@ class VoiceListener:
             except sr.WaitTimeoutError:
                 # No speech detected
                 if self.state == ListeningState.LISTENING:
-                    # If we're waiting for a command and nothing comes, go back to sleep
-                    time.sleep(0.5)  # Wait a bit more for command
-                    if self.state == ListeningState.LISTENING:  # Still no command
-                        self.state = ListeningState.SLEEPING
-                        self.logger.debug("No command received, going back to sleep")
+                    # If waiting for command and nothing heard, stay in listening state
+                    # (Don't go back to sleep immediately - wait for timeout in main loop)
+                    pass
                 continue
             except Exception as e:
                 self.stats["errors"] += 1
@@ -169,7 +176,7 @@ class VoiceListener:
                 
                 # Wait before retrying
                 time.sleep(1)
-        
+    
     def _recognize_speech(self, audio) -> Optional[str]:
         """Convert audio to text using multiple engines"""
         text = None
@@ -204,7 +211,7 @@ class VoiceListener:
         wake_words = [
             "hey lisa", "hello lisa", "wake up lisa", 
             "lisa", "hey leesa", "hey lease", "hey lis",
-            "listen", "hey listen", "hey lee"
+            "listen", "hey listen", "hey lee", "elisa"
         ]
         
         # Check for exact or partial matches
@@ -256,13 +263,11 @@ class VoiceListener:
         # Call callback if set
         if self.on_wake_word_detected:
             self.on_wake_word_detected(text, response)
-        
-        # Log that we're now listening for commands
-        self.logger.debug("Now listening for commands...")
-
+    
     def _handle_command(self, text: str):
         """Handle command after wake word"""
         self.stats["commands_processed"] += 1
+        self.state = ListeningState.SLEEPING  # Go back to sleep after command
         
         self.logger.info(f"{Colors.BLUE}→ Command: '{text}'{Colors.ENDC}")
         
@@ -276,9 +281,6 @@ class VoiceListener:
         # Call callback if set
         if self.on_command_received:
             self.on_command_received(text)
-        
-        # Return to sleep state after command
-        self.state = ListeningState.SLEEPING
     
     def get_next_command(self, timeout: float = 1.0) -> Optional[Dict]:
         """Get next command from queue (non-blocking)"""

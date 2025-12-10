@@ -24,7 +24,7 @@ class ResponseEngine:
     """Handles text-to-speech responses"""
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.logger = logging.getLogger("AEGIS.ResponseEngine")
+        self.logger = logging.getLogger("LISA.ResponseEngine")
         self.engine = None
         
         # Configuration
