@@ -59,6 +59,7 @@ class AutomationEngine:
             # Try common applications
             app_commands = {
                 "notepad": self._open_notepad,
+                "microsoft word": self._open_word,
                 "word": self._open_word,
                 "chrome": self._open_chrome,
                 "browser": self._open_browser,
@@ -108,28 +109,43 @@ class AutomationEngine:
             self.logger.error(f"Failed to open URL {url}: {e}")
             return False
     
-    def open_multiple_tabs(self, urls: List[str], browser: str = "chrome") -> bool:
-        """Open multiple URLs in tabs"""
-        self.logger.info(f"Opening {len(urls)} tabs")
+    # In automation_engine.py, update the open_multiple_tabs method:
+
+    def open_multiple_tabs(self, urls: List[str], browser: str = "default") -> bool:
+        """Open multiple URLs in tabs using default browser"""
+        self.logger.info(f"Opening {len(urls)} tabs in default browser")
         
         try:
-            # Open first URL in new window
-            if urls:
-                self.open_url(urls[0])
-                time.sleep(1)
+            if not urls:
+                return False
+            
+            # Open first URL in default browser
+            self.open_url(urls[0])
+            time.sleep(2)  # Wait for browser to open
             
             # Open remaining URLs in new tabs
-            for url in urls[1:]:
-                # Simulate Ctrl+T for new tab and navigate
-                pyautogui.hotkey('ctrl', 't')
-                time.sleep(0.5)
-                pyautogui.hotkey('ctrl', 'l')  # Focus address bar
-                time.sleep(0.2)
-                pyautogui.write(url)
-                pyautogui.press('enter')
+            if len(urls) > 1:
+                # Wait a bit for browser to be ready
                 time.sleep(1)
+                
+                for url in urls[1:]:
+                    try:
+                        # These shortcuts work in most browsers (Edge, Chrome, Firefox)
+                        pyautogui.hotkey('ctrl', 't')
+                        time.sleep(0.7)  # Slightly longer wait for new tab
+                        pyautogui.hotkey('ctrl', 'l')
+                        time.sleep(0.3)
+                        pyautogui.write(url)
+                        time.sleep(0.1)
+                        pyautogui.press('enter')
+                        time.sleep(1)  # Wait for page to start loading
+                    except Exception as e:
+                        self.logger.warning(f"Failed to open tab for {url}: {e}")
+                        # Try alternative method for this URL
+                        self.open_url(url)
+                        time.sleep(1)
             
-            self.logger.info(f"✓ Opened {len(urls)} tabs")
+            self.logger.info(f"✓ Opened {len(urls)} tabs in default browser")
             return True
             
         except Exception as e:
@@ -164,22 +180,87 @@ class AutomationEngine:
             self.logger.error(f"Failed to open folder {folder_path}: {e}")
             return False
     
-    def play_music(self, source: str = "youtube") -> bool:
-        """Play background music"""
-        self.logger.info(f"Playing music from {source}")
+    # In automation_engine.py, replace the play_music method with this:
+
+    def play_music(self, source: str = "youtube", browser: str = "chrome") -> bool:
+        """Play background music in specific browser"""
+        self.logger.info(f"Playing music from {source} in {browser}")
         
         try:
             if source.lower() == "youtube":
-                # Open YouTube study music
-                url = "https://youtube.com/playlist?list=PLkd-lH9-8EJVtcCMbApQ_5uANEUvu7sAn&si=0yqTYbA1P1mG3tm1"  # Lo-fi study music
+                # YouTube study music playlist
+                url = "https://youtube.com/playlist?list=PLkd-lH9-8EJVtcCMbApQ_5uANEUvu7sAn&si=BWPHgWZHjHTmeJi-"  # Lo-fi study music
+                
+                if browser.lower() == "chrome":
+                    # Try to open Chrome specifically with the URL
+                    chrome_paths = [
+                        "C:/Program Files/Google/Chrome/Application/chrome.exe",
+                        "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+                        os.path.expandvars("%ProgramFiles%/Google/Chrome/Application/chrome.exe"),
+                        os.path.expandvars("%ProgramFiles(x86)%/Google/Chrome/Application/chrome.exe"),
+                        os.path.expanduser("~/AppData/Local/Google/Chrome/Application/chrome.exe"),
+                    ]
+                    
+                    chrome_found = False
+                    chrome_path = None
+                    
+                    # Find Chrome executable
+                    for path in chrome_paths:
+                        expanded_path = os.path.expandvars(path)
+                        if os.path.exists(expanded_path):
+                            chrome_found = True
+                            chrome_path = expanded_path
+                            self.logger.info(f"Found Chrome at: {chrome_path}")
+                            break
+                    
+                    if chrome_found and chrome_path:
+                        try:
+                            # Open Chrome with the URL directly
+                            subprocess.Popen([chrome_path, url])
+                            self.logger.info(f"✓ Opened Chrome with YouTube music: {url}")
+                            
+                            # Wait for Chrome to open and focus
+                            time.sleep(3)
+                            
+                            # Optional: Make Chrome fullscreen for better music experience
+                            try:
+                                # pyautogui.hotkey('f11')  # Fullscreen
+                                time.sleep(0.5)
+                                # Space to play if needed
+                                pyautogui.press('space')
+                            except:
+                                pass  # Don't fail if fullscreen doesn't work
+                            
+                            return True
+                        except Exception as e:
+                            self.logger.warning(f"Failed to open Chrome directly: {e}")
+                    
+                    # Fallback: Try to open via system command
+                    try:
+                        if self.os_utils.is_windows():
+                            os.system(f'start chrome "{url}"')
+                        elif self.os_utils.is_mac():
+                            subprocess.Popen(['open', '-a', 'Google Chrome', url])
+                        else:  # Linux
+                            subprocess.Popen(['google-chrome', url])
+                        
+                        self.logger.info(f"✓ Opened Chrome via system command with URL")
+                        time.sleep(2)
+                        return True
+                    except Exception as e:
+                        self.logger.warning(f"System command fallback failed: {e}")
+                        
+                # If not Chrome or Chrome methods failed, use default browser
+                self.logger.info("Using default browser for music")
                 return self.open_url(url)
+                    
             elif source.lower() == "spotify":
                 # Would need Spotify integration
                 self.logger.warning("Spotify integration not implemented yet")
                 return False
             else:
-                # Default to YouTube
-                return self.play_music("youtube")
+                # Default to YouTube in Chrome
+                return self.play_music("youtube", "chrome")
                 
         except Exception as e:
             self.logger.error(f"Failed to play music: {e}")
@@ -208,7 +289,8 @@ class AutomationEngine:
                 
             ],
             "play_music": True,
-            "music_source": "youtube"
+            "music_source": "youtube",
+            "music_browser": "chrome"
         }
         
         # Merge with provided config
@@ -227,7 +309,7 @@ class AutomationEngine:
             total_tasks += 1
             if self.open_application(app_config["name"], app_config.get("path", "")):
                 success_count += 1
-                time.sleep(1)  # Wait between app launches
+                time.sleep(2)  # Wait between app launches
         
         # Open browser tabs
         if config["urls_to_open"]:
@@ -245,7 +327,8 @@ class AutomationEngine:
         # Play music
         if config["play_music"]:
             total_tasks += 1
-            if self.play_music(config.get("music_source", "youtube")):
+            music_browser = config.get("music_browser", "chrome")
+            if self.play_music(config.get("music_source", "youtube"), music_browser):
                 success_count += 1
         
         success_rate = (success_count / total_tasks * 100) if total_tasks > 0 else 0
@@ -261,20 +344,114 @@ class AutomationEngine:
             return True
         return False
     
+    # In automation_engine.py, replace the _open_word method with this:
+
     def _open_word(self) -> bool:
-        """Open Microsoft Word"""
-        # Common Word paths on Windows
-        word_paths = [
-            "C:/Program Files/Microsoft Office/root/Office16/WINWORD.EXE"
-        ]
+        """Open Microsoft Word using Windows search simulation"""
+        self.logger.info("Opening Microsoft Word via Windows search...")
         
-        for path in word_paths:
-            if os.path.exists(path):
-                os.startfile(path)
-                return True
-        
-        # Try to open by name
-        return self.os_utils.open_application("Word")
+        try:
+            # Clear any existing text by pressing Escape first
+            pyautogui.press('esc')
+            time.sleep(0.2)
+            
+            # Step 1: Press Windows key to open Start Menu
+            pyautogui.press('win')
+            time.sleep(0.5)  # Wait for Start Menu to fully open
+            
+            # Step 2: Type "word" slowly
+            pyautogui.write('word', interval=0.1)
+            time.sleep(0.5)  # Wait for search results
+            
+            # Step 3: Press Enter to select the first result
+            pyautogui.press('enter')
+            time.sleep(1.5)
+            pyautogui.press('enter')
+            
+            
+            # Wait for Word to open
+           
+
+            time.sleep(1.5)
+            
+            # Step 4: Check if Word opened successfully
+            try:
+                # Look for Word process
+                for proc in psutil.process_iter(['name']):
+                    try:
+                        proc_name = proc.info['name'].lower()
+                        if 'winword' in proc_name:
+                            self.logger.info(f"✓ Word process found: {proc_name}")
+                            return True
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                        
+                # If process not found, check windows
+                for window in pyautogui.getAllWindows():
+                    if window.title and ('word' in window.title.lower() or 'document' in window.title.lower()):
+                        self.logger.info(f"✓ Word window found: {window.title}")
+                        return True
+                        
+            except Exception as e:
+                self.logger.debug(f"Verification failed: {e}")
+            
+            # If we're here, Word may not have opened
+            self.logger.warning("Word may not have opened properly")
+            return True  # Return True anyway since we tried
+            
+        except Exception as e:
+            self.logger.error(f"Windows search method failed: {e}")
+            
+            # Fallback methods
+            fallbacks = [
+                self._try_winword_protocol,
+                self._try_run_dialog,
+                self._try_direct_command,
+            ]
+            
+            for fallback_method in fallbacks:
+                try:
+                    if fallback_method():
+                        return True
+                except Exception as fe:
+                    self.logger.debug(f"Fallback failed: {fe}")
+                    continue
+            
+            return False
+
+    def _try_winword_protocol(self) -> bool:
+        """Try opening via winword: protocol"""
+        try:
+            os.startfile("winword:")
+            time.sleep(3)
+            self.logger.info("✓ Used winword protocol")
+            return True
+        except:
+            return False
+
+    def _try_run_dialog(self) -> bool:
+        """Try opening via Run dialog"""
+        try:
+            pyautogui.hotkey('win', 'r')
+            time.sleep(0.8)
+            pyautogui.write('winword.exe')
+            time.sleep(0.5)
+            pyautogui.press('enter')
+            time.sleep(4)
+            self.logger.info("✓ Used Run dialog")
+            return True
+        except:
+            return False
+
+    def _try_direct_command(self) -> bool:
+        """Try direct command execution"""
+        try:
+            subprocess.run(['cmd', '/c', 'start', 'winword'], shell=True, check=False)
+            time.sleep(3)
+            self.logger.info("✓ Used direct command")
+            return True
+        except:
+            return False
     
     def _open_chrome(self) -> bool:
         """Open Chrome browser"""

@@ -225,25 +225,25 @@ class LISA:
         self.logger.info(f"Wake word: {wake_text}")
         
         # Add to queue for processing in main loop
-        if self.voice_listener:
-            self.voice_listener.command_queue.put({
-                "type": "wake_word",
-                "text": wake_text,
-                "response": response,
-                "timestamp": time.time()
-            })
+        # if self.voice_listener:
+        #     self.voice_listener.command_queue.put({
+        #         "type": "wake_word",
+        #         "text": wake_text,
+        #         "response": response,
+        #         "timestamp": time.time()
+        #     })
     
     def _on_command(self, command_text: str):
         """Handle command received"""
         self.logger.info(f"Command: {command_text}")
         
         # Add to queue for processing in main loop
-        if self.voice_listener:
-            self.voice_listener.command_queue.put({
-                "type": "command",
-                "text": command_text,
-                "timestamp": time.time()
-            })
+        # if self.voice_listener:
+        #     self.voice_listener.command_queue.put({
+        #         "type": "command",
+        #         "text": command_text,
+        #         "timestamp": time.time()
+        #     })
     
     def _on_voice_error(self, error: Exception):
         """Handle voice errors"""
@@ -313,22 +313,50 @@ class LISA:
                     self.response_engine.speak(response)
         
         elif "open" in command_text:
-            # Extract app name
+            # Extract app name - remove common phrases
             app_name = command_text.replace("open", "").strip()
             
+            # Remove common polite phrases
+            polite_phrases = ["can you", "please", "could you", "would you", "hey lisa"]
+            for phrase in polite_phrases:
+                app_name = app_name.replace(phrase, "").strip()
+            
             if app_name:
-                response = f"Opening {app_name}..."
+                # Map spoken names to actual app names
+                app_mapping = {
+                    "word": "microsoft word",
+                    "ms word": "microsoft word", 
+                    "microsoft word": "microsoft word",
+                    "chrome": "google chrome",
+                    "browser": "google chrome",
+                    "notepad": "notepad",
+                    "calculator": "calculator",
+                    "vscode": "visual studio code",
+                    "vs code": "visual studio code",
+                    "visual studio code": "visual studio code",
+                    "explorer": "file explorer",
+                    "file explorer": "file explorer",
+                    "cmd": "command prompt",
+                    "command prompt": "command prompt",
+                    "powershell": "powershell",
+                    "terminal": "terminal",
+                }
+                
+                # Get the actual app name from mapping
+                actual_app_name = app_mapping.get(app_name.lower(), app_name)
+                
+                response = f"Opening {actual_app_name}..."
                 print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
                 if hasattr(self, 'response_engine'):
                     self.response_engine.speak(response)
                 
                 # Open application
                 if hasattr(self, 'automation_engine'):
-                    success = self.automation_engine.open_application(app_name)
+                    success = self.automation_engine.open_application(actual_app_name)
                     if success:
-                        response = f"{app_name} opened successfully."
+                        response = f"{actual_app_name} opened successfully."
                     else:
-                        response = f"Failed to open {app_name}."
+                        response = f"Failed to open {actual_app_name}."
                     print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
                     if hasattr(self, 'response_engine'):
                         self.response_engine.speak(response)
