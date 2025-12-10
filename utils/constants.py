@@ -1,6 +1,6 @@
 
 """
-Constants used throughout the AEGIS system
+Constants used throughout the LISA system
 """
 
 import os
@@ -25,7 +25,8 @@ USER_PREFS = CONFIG_DIR / "user_prefs.json"
 SYSTEM_CONFIG = CONFIG_DIR / "system_config.json"
 
 # Wake word
-WAKE_WORD = "hey aegis"
+WAKE_WORD = "hey lisa"
+ASSISTANT_NAME = "Lisa"
 
 # Security levels
 SECURITY_LEVELS = {
@@ -37,8 +38,11 @@ SECURITY_LEVELS = {
 # Colors for console output
 class Colors:
     HEADER = '\033[95m'
+    MAGENTA = '\033[95m'  # For Lisa theme
+    CYAN = '\033[96m'     # For listening indicator
     BLUE = '\033[94m'
     GREEN = '\033[92m'
+    YELLOW = '\033[93m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
     ENDC = '\033[0m'

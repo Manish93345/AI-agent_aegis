@@ -1,9 +1,10 @@
 {
     "user_info": {
-        "name": "Your_Name",
+        "name": "Manish",
+        "assistant_name": "Lisa",
         "voice_sample_path": "data/voice_samples/",
         "auth_method": "voice+pin",
-        "backup_location": "D:/AEGIS_Backups/"
+        "backup_location": "D:/LISA_Backups/"
     },
     
     "study_cyber_routine": {
@@ -21,12 +22,13 @@
             "C:/Users/[USER]/Documents/Cyber Security",
             "C:/Users/[USER]/Desktop/Study Materials"
         ],
-        "background_music": "https://youtube.com/playlist?list=PLkd-lH9-8EJVtcCMbApQ_5uANEUvu7sAn&si=t4ErGOf6IkFBm_M-",
+        "background_music": "https://www.youtube.com/watch?v=lTRiuFIWV54",
         "notes_file": "C:/Users/[USER]/Documents/Cyber Security/notes.docx"
     },
     
     "system_preferences": {
-        "wake_word": "hey aegis",
+        "wake_word": "hey lisa",
+        "assistant_name": "Lisa",
         "response_voice": "female",
         "response_speed": 150,
         "auto_backup": true,

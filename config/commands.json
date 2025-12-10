@@ -1,8 +1,8 @@
 {
     "basic_commands": {
-        "greeting": ["hey aegis", "hello aegis", "wake up", "are you there"],
-        "goodbye": ["go to sleep", "stop listening", "goodbye aegis"],
-        "status": ["how are you", "system status", "what's up"]
+        "greeting": ["hey lisa", "hello lisa", "wake up lisa", "are you there lisa"],
+        "goodbye": ["go to sleep", "stop listening", "goodbye lisa", "bye lisa"],
+        "status": ["how are you lisa", "system status", "what's up lisa"]
     },
     
     "application_commands": {
@@ -19,7 +19,7 @@
     },
     
     "routine_commands": {
-        "study_cyber": ["study cyber", "start cyber study", "begin security study"],
+        "study_cyber": ["study cyber", "start cyber study", "begin security study", "cyber mode"],
         "work_mode": ["start working", "work mode", "begin work session"]
     },
     
