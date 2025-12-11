@@ -10,20 +10,16 @@
     "study_cyber_routine": {
         "apps_to_open": [
             {"name": "Microsoft Word", "path": "C:/Program Files/Microsoft Office/root/Office16/WINWORD.EXE"},
-            {"name": "Chrome", "path": "C:/Program Files/Google/Chrome/Application/chrome.exe"},
-            {"name": "VS Code", "path": "C:/Users/[USER]/AppData/Local/Programs/Microsoft VS Code/Code.exe"}
+            {"name": "Chrome", "path": "C:/Program Files/Google/Chrome/Application/chrome.exe"}
         ],
         "urls_to_open": [
-            "https://tryhackme.com",
-            "https://hackthebox.com",
-            "https://cybrary.it"
+            "https://chatgpt.com/",
+            "https://chat.deepseek.com/"
         ],
         "folders_to_open": [
-            "C:/Users/[USER]/Documents/Cyber Security",
-            "C:/Users/[USER]/Desktop/Study Materials"
+            "D:/CyberSecurity/CyberSecurity/Self-Study"
         ],
-        "background_music": "https://www.youtube.com/watch?v=lTRiuFIWV54",
-        "notes_file": "C:/Users/[USER]/Documents/Cyber Security/notes.docx"
+        "background_music": "https://youtube.com/playlist?list=PLkd-lH9-8EJVtcCMbApQ_5uANEUvu7sAn&si=BWPHgWZHjHTmeJi-"
     },
     
     "system_preferences": {

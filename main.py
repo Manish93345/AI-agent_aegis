@@ -8,6 +8,7 @@ Learning Intelligent System Assistant
 import sys
 import io
 import os
+from core.command_parser import CommandParser
 
 # Fix Windows console encoding for checkmarks/crosses
 if sys.platform == "win32":
@@ -44,6 +45,7 @@ class LISA:
         self.is_running = False
         self.voice_listener = None
         self.assistant_name = "Lisa"
+        self.command_parser = CommandParser()
         
         # Setup logging
         self.setup_logging()
@@ -251,52 +253,48 @@ class LISA:
         print(f"{Colors.FAIL}Voice error: {error}{Colors.ENDC}")
     
     def _process_basic_command(self, command_text: str):
-        """Process basic voice commands"""
-        command_text = command_text.lower().strip()
+        """Process basic voice commands using command parser"""
+        # Parse the command
+        parsed = self.command_parser.parse_command(command_text)
         
-        # Basic command processing
-        if any(word in command_text for word in ["hello", "hi", "hey"]):
-            response = "Hello! How can I help you?"
+        # Get response
+        response = self.command_parser.get_response(parsed)
+        
+        # Execute based on parsed action
+        action = parsed.get("action")
+        if action == "greeting":
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
         
-        elif any(word in command_text for word in ["time", "what time"]):
+        elif action == "farewell":
+            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(response)
+            self.is_running = False
+
+        elif action in ["who_are_you", "your_name", "my_name"]:
+            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(response)
+        
+        elif action == "time":
             from datetime import datetime
             current_time = datetime.now().strftime("%I:%M %p")
-            response = f"The current time is {current_time}"
+            response = response.format(time=current_time)
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
         
-        elif any(word in command_text for word in ["date", "today"]):
+        elif action == "date":
             from datetime import datetime
             current_date = datetime.now().strftime("%B %d, %Y")
-            response = f"Today is {current_date}"
+            response = response.format(date=current_date)
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
         
-        elif any(word in command_text for word in ["thank", "thanks"]):
-            response = "You're welcome!"
-            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
-            if hasattr(self, 'response_engine'):
-                self.response_engine.speak(response)
-        
-        elif any(word in command_text for word in ["who are you", "what are you"]):
-            response = f"I am {self.assistant_name}, your personal AI assistant. I'm here to help you!"
-            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
-            if hasattr(self, 'response_engine'):
-                self.response_engine.speak(response)
-        
-        elif any(word in command_text for word in ["your name", "who am i"]):
-            response = f"My name is {self.assistant_name}. You can call me Lisa."
-            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
-            if hasattr(self, 'response_engine'):
-                self.response_engine.speak(response)
-        
-        elif "study cyber" in command_text or "cyber mode" in command_text:
-            response = "Starting study cyber routine. Opening applications and study materials."
+        elif action == "study_cyber":
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
@@ -312,64 +310,78 @@ class LISA:
                 if hasattr(self, 'response_engine'):
                     self.response_engine.speak(response)
         
-        elif "open" in command_text:
-            # Extract app name - remove common phrases
-            app_name = command_text.replace("open", "").strip()
+        elif action in ["open_word", "open_chrome", "open_notepad", "open_calculator", "open_vscode", "open_explorer", "open_cmd", "open_terminal", "open_powershell"]:
+            app_map = {
+                "open_word": "microsoft word",
+                "open_chrome": "chrome",
+                "open_notepad": "notepad",
+                "open_calculator": "calculator",
+                "open_vscode": "visual studio code",
+                "open_explorer": "file explorer",
+                "open_browser": "chrome",
+                "open_cmd": "command prompt",
+                "open_terminal": "terminal",
+                "open_powershell": "powershell"
+            }
             
-            # Remove common polite phrases
-            polite_phrases = ["can you", "please", "could you", "would you", "hey lisa"]
-            for phrase in polite_phrases:
-                app_name = app_name.replace(phrase, "").strip()
+            app_name = app_map.get(action, parsed.get("parameters", {}).get("app_name", ""))
             
             if app_name:
-                # Map spoken names to actual app names
-                app_mapping = {
-                    "word": "microsoft word",
-                    "ms word": "microsoft word", 
-                    "microsoft word": "microsoft word",
-                    "chrome": "google chrome",
-                    "browser": "google chrome",
-                    "notepad": "notepad",
-                    "calculator": "calculator",
-                    "vscode": "visual studio code",
-                    "vs code": "visual studio code",
-                    "visual studio code": "visual studio code",
-                    "explorer": "file explorer",
-                    "file explorer": "file explorer",
-                    "cmd": "command prompt",
-                    "command prompt": "command prompt",
-                    "powershell": "powershell",
-                    "terminal": "terminal",
-                }
-                
-                # Get the actual app name from mapping
-                actual_app_name = app_mapping.get(app_name.lower(), app_name)
-                
-                response = f"Opening {actual_app_name}..."
                 print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
                 if hasattr(self, 'response_engine'):
                     self.response_engine.speak(response)
                 
-                # Open application
                 if hasattr(self, 'automation_engine'):
-                    success = self.automation_engine.open_application(actual_app_name)
+                    success = self.automation_engine.open_application(app_name)
                     if success:
-                        response = f"{actual_app_name} opened successfully."
+                        response = f"{app_name} opened successfully."
                     else:
-                        response = f"Failed to open {actual_app_name}."
+                        response = f"Failed to open {app_name}."
                     print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
                     if hasattr(self, 'response_engine'):
                         self.response_engine.speak(response)
-        
-        elif any(word in command_text for word in ["stop", "exit", "quit", "goodbye", "sleep"]):
-            response = f"Goodbye! Shutting down {self.assistant_name}."
+
+        elif action == "help":
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            # Also list available commands
+            print(f"\n{Colors.CYAN}Available commands:{Colors.ENDC}")
+            print(f"  • 'What time is it?' - Get current time")
+            print(f"  • 'Open [app]' - Open applications (Word, Chrome, Notepad, etc.)")
+            print(f"  • 'Study cyber' - Start your study routine")
+            print(f"  • 'Who are you?' - Learn about Lisa")
+            print(f"  • 'What can you do?' - List all commands")
+            print(f"  • 'Goodbye' - Shutdown Lisa")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
-            self.is_running = False
+        
+        elif action == "shutdown":
+            # Actually shutdown the computer
+            import os
+            print(f"{Colors.MAGENTA}LISA: Shutting down the computer...{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak("Shutting down the computer in 5 seconds")
+            time.sleep(5)
+            os.system("shutdown /s /t 1")
+        
+        elif action == "restart":
+            # Restart the computer
+            import os
+            print(f"{Colors.MAGENTA}LISA: Restarting the computer...{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak("Restarting the computer in 5 seconds")
+            time.sleep(5)
+            os.system("shutdown /r /t 1")
+        
+        elif action == "lock":
+            # Lock the computer
+            import ctypes
+            print(f"{Colors.MAGENTA}LISA: Locking the computer...{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak("Locking the computer")
+            ctypes.windll.user32.LockWorkStation()
         
         else:
-            response = f"I heard: {command_text}. I'm still learning, but I'll get better!"
+            # Unknown command
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
@@ -410,11 +422,11 @@ class LISA:
                             
                             # Process basic commands
                             self._process_basic_command(command_data['text'])
+                            last_wake_time = time.time()
                             
                             print(f"\n{Colors.CYAN}[Sleeping - waiting for 'Hey Lisa']{Colors.ENDC}", end="", flush=True)
                             dot_count = 0
                         
-                        last_print_time = time.time()
                 
                 # If we woke up but no command within 10 seconds, go back to sleep
                 if last_wake_time > 0 and time.time() - last_wake_time > 10:

@@ -267,7 +267,7 @@ class VoiceListener:
     def _handle_command(self, text: str):
         """Handle command after wake word"""
         self.stats["commands_processed"] += 1
-        self.state = ListeningState.SLEEPING  # Go back to sleep after command
+        # self.state = ListeningState.SLEEPING  # Go back to sleep after command
         
         self.logger.info(f"{Colors.BLUE}→ Command: '{text}'{Colors.ENDC}")
         

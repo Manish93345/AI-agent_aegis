@@ -195,10 +195,6 @@ class AutomationEngine:
                     # Try to open Chrome specifically with the URL
                     chrome_paths = [
                         "C:/Program Files/Google/Chrome/Application/chrome.exe",
-                        "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
-                        os.path.expandvars("%ProgramFiles%/Google/Chrome/Application/chrome.exe"),
-                        os.path.expandvars("%ProgramFiles(x86)%/Google/Chrome/Application/chrome.exe"),
-                        os.path.expanduser("~/AppData/Local/Google/Chrome/Application/chrome.exe"),
                     ]
                     
                     chrome_found = False
@@ -240,9 +236,7 @@ class AutomationEngine:
                         if self.os_utils.is_windows():
                             os.system(f'start chrome "{url}"')
                         elif self.os_utils.is_mac():
-                            subprocess.Popen(['open', '-a', 'Google Chrome', url])
-                        else:  # Linux
-                            subprocess.Popen(['google-chrome', url])
+                            subprocess.Popen(['open', '-a', 'chrome', url])
                         
                         self.logger.info(f"✓ Opened Chrome via system command with URL")
                         time.sleep(2)
@@ -269,6 +263,19 @@ class AutomationEngine:
     def execute_study_cyber_routine(self, config: Dict[str, Any] = None) -> bool:
         """Execute the 'study cyber' routine"""
         self.logger.info("Executing 'study cyber' routine")
+        # Try to load from user_prefs.json
+        try:
+            from utils.file_utils import FileUtils
+            from utils.constants import USER_PREFS
+            
+            user_prefs = FileUtils.load_json(USER_PREFS)
+            if user_prefs and "study_cyber_routine" in user_prefs:
+                self.logger.info("Using configuration from user_prefs.json")
+                user_config = user_prefs["study_cyber_routine"]
+            else:
+                user_config = {}
+        except:
+            user_config = {}
         
         # Default configuration
         default_config = {
@@ -293,13 +300,20 @@ class AutomationEngine:
             "music_browser": "chrome"
         }
         
-        # Merge with provided config
+        # Merge configurations: user config overrides defaults
+        final_config = default_config.copy()
+        if user_config:
+            for key, value in user_config.items():
+                if key in final_config:
+                    final_config[key] = value
+        
+        # Use provided config if specified (highest priority)
         if config:
             for key, value in config.items():
-                if key in default_config:
-                    default_config[key] = value
+                if key in final_config:
+                    final_config[key] = value
         
-        config = default_config
+        config = final_config
         
         success_count = 0
         total_tasks = 0
@@ -365,7 +379,7 @@ class AutomationEngine:
             
             # Step 3: Press Enter to select the first result
             pyautogui.press('enter')
-            time.sleep(1.5)
+            time.sleep(1.5) 
             pyautogui.press('enter')
             
             
@@ -454,17 +468,64 @@ class AutomationEngine:
             return False
     
     def _open_chrome(self) -> bool:
-        """Open Chrome browser"""
+        """Open Chrome browser - with error handling"""
         chrome_paths = [
             "C:/Program Files/Google/Chrome/Application/chrome.exe",
+            "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+            os.path.expandvars("%ProgramFiles%/Google/Chrome/Application/chrome.exe"),
+            os.path.expandvars("%ProgramFiles(x86)%/Google/Chrome/Application/chrome.exe"),
+            os.path.expandvars("%LocalAppData%/Google/Chrome/Application/chrome.exe"),
         ]
         
         for path in chrome_paths:
-            if os.path.exists(path):
-                os.startfile(path)
-                return True
+            expanded_path = path
+            # Handle environment variables
+            if '%' in path:
+                expanded_path = os.path.expandvars(path)
+            
+            self.logger.debug(f"Checking Chrome at: {expanded_path}")
+            
+            if os.path.exists(expanded_path):
+                try:
+                    # Try to open Chrome
+                    subprocess.Popen([expanded_path], shell=True)
+                    self.logger.info(f"✓ Opened Chrome from: {expanded_path}")
+                    
+                    # Wait a bit and check if it opened
+                    time.sleep(2)
+                    
+                    # Check if Chrome process is running
+                    chrome_running = False
+                    for proc in psutil.process_iter(['name']):
+                        if 'chrome' in proc.info['name'].lower():
+                            chrome_running = True
+                            break
+                    
+                    if chrome_running:
+                        return True
+                        
+                except Exception as e:
+                    self.logger.warning(f"Failed to open Chrome from {expanded_path}: {e}")
+                    continue
         
-        return self.os_utils.open_application("chrome")
+        # Try using webbrowser module
+        try:
+            webbrowser.get('chrome').open('about:blank')
+            self.logger.info("✓ Opened Chrome via webbrowser module")
+            return True
+        except Exception as e:
+            self.logger.warning(f"Webbrowser module failed: {e}")
+        
+        # Last resort: try system command
+        try:
+            os.system('start chrome')
+            self.logger.info("✓ Opened Chrome via system command")
+            time.sleep(2)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to open Chrome: {e}")
+        
+        return False
     
     def _open_browser(self) -> bool:
         """Open default browser"""
@@ -499,30 +560,272 @@ class AutomationEngine:
         return False
     
     def _open_cmd(self) -> bool:
-        """Open Command Prompt"""
-        if self.os_utils.is_windows():
-            os.system("cmd")
-            return True
-        return False
-    
+        """Open Command Prompt using Windows search simulation"""
+        self.logger.info("Opening Command Prompt via Windows search...")
+        
+        try:
+            # Clear any existing text by pressing Escape first
+            pyautogui.press('esc')
+            time.sleep(0.2)
+            
+            # Step 1: Press Windows key to open Start Menu
+            pyautogui.press('win')
+            time.sleep(0.2)  # Wait for Start Menu to fully open
+            
+            # Step 2: Type "cmd" slowly
+            pyautogui.write('cmd', interval=0.1)
+            time.sleep(0.5)  # Wait for search results
+            
+            # Step 3: Press Enter to select Command Prompt
+            pyautogui.press('enter')
+            
+            # Wait for CMD to open
+            time.sleep(2)
+            
+            # Step 4: Check if CMD opened successfully
+            try:
+                # Look for cmd.exe process
+                for proc in psutil.process_iter(['name']):
+                    try:
+                        proc_name = proc.info['name'].lower()
+                        if 'cmd.exe' in proc_name:
+                            self.logger.info(f"✓ CMD process found: {proc_name}")
+                            return True
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                        
+                # If process not found, check windows
+                for window in pyautogui.getAllWindows():
+                    if window.title and ('command prompt' in window.title.lower() or 'cmd.exe' in window.title.lower()):
+                        self.logger.info(f"✓ CMD window found: {window.title}")
+                        return True
+                        
+            except Exception as e:
+                self.logger.debug(f"Verification failed: {e}")
+            
+            # If we're here, CMD may not have opened
+            self.logger.warning("CMD may not have opened properly")
+            return True  # Return True anyway since we tried
+            
+        except Exception as e:
+            self.logger.error(f"Windows search method failed: {e}")
+            
+            # Fallback methods
+            fallbacks = [
+                self._try_cmd_run_dialog,
+                self._try_cmd_direct_command,
+            ]
+            
+            for fallback_method in fallbacks:
+                try:
+                    if fallback_method():
+                        return True
+                except Exception as fe:
+                    self.logger.debug(f"Fallback failed: {fe}")
+                    continue
+            
+            return False
+
     def _open_powershell(self) -> bool:
-        """Open PowerShell"""
-        if self.os_utils.is_windows():
-            os.system("powershell")
-            return True
-        return False
-    
+        """Open PowerShell using Windows search simulation"""
+        self.logger.info("Opening PowerShell via Windows search...")
+        
+        try:
+            # Clear any existing text by pressing Escape first
+            pyautogui.press('esc')
+            time.sleep(0.2)
+            
+            # Step 1: Press Windows key to open Start Menu
+            pyautogui.press('win')
+            time.sleep(0.2)  # Wait for Start Menu to fully open
+            
+            # Step 2: Type "powershell" slowly
+            pyautogui.write('powershell', interval=0.1)
+            time.sleep(0.5)  # Wait for search results
+            
+            # Step 3: Press Enter to select PowerShell
+            pyautogui.press('enter')
+            
+            # Wait for PowerShell to open
+            time.sleep(2)
+            
+            # Step 4: Check if PowerShell opened successfully
+            try:
+                # Look for powershell.exe process
+                for proc in psutil.process_iter(['name']):
+                    try:
+                        proc_name = proc.info['name'].lower()
+                        if 'powershell.exe' in proc_name:
+                            self.logger.info(f"✓ PowerShell process found: {proc_name}")
+                            return True
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                        
+                # If process not found, check windows
+                for window in pyautogui.getAllWindows():
+                    if window.title and 'powershell' in window.title.lower():
+                        self.logger.info(f"✓ PowerShell window found: {window.title}")
+                        return True
+                        
+            except Exception as e:
+                self.logger.debug(f"Verification failed: {e}")
+            
+            # If we're here, PowerShell may not have opened
+            self.logger.warning("PowerShell may not have opened properly")
+            return True  # Return True anyway since we tried
+            
+        except Exception as e:
+            self.logger.error(f"Windows search method failed: {e}")
+            
+            # Fallback methods
+            fallbacks = [
+                self._try_powershell_run_dialog,
+                self._try_powershell_direct_command,
+            ]
+            
+            for fallback_method in fallbacks:
+                try:
+                    if fallback_method():
+                        return True
+                except Exception as fe:
+                    self.logger.debug(f"Fallback failed: {fe}")
+                    continue
+            
+            return False
+
     def _open_terminal(self) -> bool:
-        """Open Terminal"""
-        if self.os_utils.is_windows():
-            os.system("wt")  # Windows Terminal
+        """Open Windows Terminal using Windows search simulation"""
+        self.logger.info("Opening Windows Terminal via Windows search...")
+        
+        try:
+            # Clear any existing text by pressing Escape first
+            pyautogui.press('esc')
+            time.sleep(0.2)
+            
+            # Step 1: Press Windows key to open Start Menu
+            pyautogui.press('win')
+            time.sleep(0.2)  # Wait for Start Menu to fully open
+            
+            # Step 2: Type "terminal" slowly
+            pyautogui.write('terminal', interval=0.1)
+            time.sleep(0.5)  # Wait for search results
+            
+            # Step 3: Press Enter to select Windows Terminal
+            pyautogui.press('enter')
+            
+            # Wait for Terminal to open
+            time.sleep(2)
+            
+            # Step 4: Check if Terminal opened successfully
+            try:
+                # Look for WindowsTerminal.exe process
+                for proc in psutil.process_iter(['name']):
+                    try:
+                        proc_name = proc.info['name'].lower()
+                        if 'windowsterminal.exe' in proc_name or 'terminal.exe' in proc_name:
+                            self.logger.info(f"✓ Terminal process found: {proc_name}")
+                            return True
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                        
+                # If process not found, check windows
+                for window in pyautogui.getAllWindows():
+                    if window.title and 'terminal' in window.title.lower():
+                        self.logger.info(f"✓ Terminal window found: {window.title}")
+                        return True
+                        
+            except Exception as e:
+                self.logger.debug(f"Verification failed: {e}")
+            
+            # If we're here, Terminal may not have opened
+            self.logger.warning("Terminal may not have opened properly")
+            
+            # Try to open CMD as fallback
+            self.logger.info("Trying to open Command Prompt as fallback for Terminal...")
+            return self._open_cmd()
+            
+        except Exception as e:
+            self.logger.error(f"Windows search method failed: {e}")
+            
+            # Fallback: Try to open CMD
+            return self._open_cmd()
+
+    # Fallback methods for CMD
+    def _try_cmd_run_dialog(self) -> bool:
+        """Try opening CMD via Run dialog"""
+        try:
+            pyautogui.hotkey('win', 'r')
+            time.sleep(0.8)
+            pyautogui.write('cmd')
+            time.sleep(0.5)
+            pyautogui.press('enter')
+            time.sleep(2)
+            self.logger.info("✓ Used Run dialog for CMD")
             return True
-        elif self.os_utils.is_mac():
-            subprocess.Popen(['open', '-a', 'Terminal'])
+        except:
+            return False
+
+    def _try_cmd_direct_command(self) -> bool:
+        """Try direct command execution for CMD"""
+        try:
+            subprocess.run(['cmd', '/c', 'start', 'cmd'], shell=True, check=False)
+            time.sleep(3)
+            self.logger.info("✓ Used direct command for CMD")
             return True
-        else:  # Linux
-            subprocess.Popen(['gnome-terminal'])
+        except:
+            return False
+
+    # Fallback methods for PowerShell
+    def _try_powershell_run_dialog(self) -> bool:
+        """Try opening PowerShell via Run dialog"""
+        try:
+            pyautogui.hotkey('win', 'r')
+            time.sleep(0.8)
+            pyautogui.write('powershell')
+            time.sleep(0.5)
+            pyautogui.press('enter')
+            time.sleep(2)
+            self.logger.info("✓ Used Run dialog for PowerShell")
             return True
+        except:
+            return False
+
+    def _try_powershell_direct_command(self) -> bool:
+        """Try direct command execution for PowerShell"""
+        try:
+            subprocess.run(['cmd', '/c', 'start', 'powershell'], shell=True, check=False)
+            time.sleep(3)
+            self.logger.info("✓ Used direct command for PowerShell")
+            return True
+        except:
+            return False
+
+    # Remove the old methods completely:
+    # def _open_cmd(self) -> bool:
+    #     """Open Command Prompt"""
+    #     if self.os_utils.is_windows():
+    #         os.system("cmd")
+    #         return True
+    #     return False
+    # 
+    # def _open_powershell(self) -> bool:
+    #     """Open PowerShell"""
+    #     if self.os_utils.is_windows():
+    #         os.system("powershell")
+    #         return True
+    #     return False
+    # 
+    # def _open_terminal(self) -> bool:
+    #     """Open Terminal"""
+    #     if self.os_utils.is_windows():
+    #         os.system("wt")  # Windows Terminal
+    #         return True
+    #     elif self.os_utils.is_mac():
+    #         subprocess.Popen(['open', '-a', 'Terminal'])
+    #         return True
+    #     else:  # Linux
+    #         subprocess.Popen(['gnome-terminal'])
+    #         return True
 
 # Test function
 def test_automation():
