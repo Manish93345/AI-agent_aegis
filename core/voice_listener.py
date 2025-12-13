@@ -181,17 +181,28 @@ class VoiceListener:
         """Convert audio to text using multiple engines"""
         text = None
         
-        # Try Google Speech Recognition (online, more accurate)
+        # Try Google Speech Recognition with language detection
         try:
-            text = self.recognizer.recognize_google(audio)
-            self.logger.debug("Used Google Speech Recognition")
+            # Try English first (faster for English commands)
+            text = self.recognizer.recognize_google(audio, language="en-US")
+            self.logger.debug("Used Google Speech Recognition (English)")
             return text
         except sr.UnknownValueError:
-            self.logger.debug("Google could not understand audio")
+            self.logger.debug("Google could not understand audio as English")
         except sr.RequestError as e:
             self.logger.warning(f"Google API error: {e}")
         
-        # Fallback: Try offline recognition (Sphinx)
+        # Try Hindi if English fails
+        try:
+            text = self.recognizer.recognize_google(audio, language="hi-IN")
+            self.logger.debug("Used Google Speech Recognition (Hindi)")
+            return text
+        except sr.UnknownValueError:
+            self.logger.debug("Google could not understand audio as Hindi")
+        except sr.RequestError as e:
+            self.logger.debug(f"Google Hindi API error: {e}")
+        
+        # Fallback: Try offline recognition (Sphinx - English only)
         try:
             text = self.recognizer.recognize_sphinx(audio)
             self.logger.debug("Used Sphinx (offline)")
@@ -204,31 +215,46 @@ class VoiceListener:
         return text
     
     def _is_wake_word(self, text: str) -> bool:
-        """Check if text contains wake word"""
+        """Check if text contains wake word in English or Hindi"""
         text = text.lower().strip()
         
-        # Wake words for "Lisa" - much easier to recognize!
-        wake_words = [
+        # English wake words
+        english_wake_words = [
             "hey lisa", "hello lisa", "wake up lisa", 
-            "lisa", "hey leesa", "hey lease", "hey lis",
-            "listen", "hey listen", "hey lee", "elisa"
+            "lisa", "hey leesa", "hey lis","lisa baby",
+            "listen", "hey listen", "hey lee", "elisa",
+            "baby", "cutie", "lisa jaan", "jaanu", "meri cutie",
+            "jaan", "lisa cutie"
         ]
         
-        # Check for exact or partial matches
-        for wake_word in wake_words:
+        # Hindi wake words (Romanized)
+        hindi_wake_words = [
+            "हे लिसा", "नमस्ते लिसा", "सुनो लिसा",
+            "लिसा", "अरे लिसा"
+        ]
+        
+        # Check English wake words
+        for wake_word in english_wake_words:
             if wake_word in text:
-                self.logger.debug(f"Wake word matched: '{wake_word}' in '{text}'")
+                self.logger.debug(f"English wake word matched: '{wake_word}' in '{text}'")
+                return True
+        
+        # Check Hindi wake words (if text contains Hindi)
+        for wake_word in hindi_wake_words:
+            # Simple check - if the Hindi phrase appears in text
+            if wake_word in text:
+                self.logger.debug(f"Hindi wake word matched: '{wake_word}'")
                 return True
         
         # Also check for "hey" followed by something similar to "lisa"
-        if "hey" in text:
+        if "hey" in text or "हे" in text:
             words = text.split()
             for i, word in enumerate(words):
-                if word == "hey" and i + 1 < len(words):
+                if word in ["hey", "हे"] and i + 1 < len(words):
                     next_word = words[i + 1].lower()
                     # Check if next word sounds like "lisa"
                     if any(sound in next_word for sound in ["lisa", "leesa", "lease", "lees", "liza", "lis"]):
-                        self.logger.debug(f"Similar wake word: 'hey {next_word}' in '{text}'")
+                        self.logger.debug(f"Similar wake word: '{word} {next_word}' in '{text}'")
                         return True
         
         return False

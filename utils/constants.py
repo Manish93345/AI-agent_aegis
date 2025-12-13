@@ -60,7 +60,7 @@ def ensure_directories():
     directories = [
         DATA_DIR, LOGS_DIR, VOICE_SAMPLES_DIR,
         ENCRYPTED_DIR, BACKUPS_DIR, MODELS_DIR,
-        CONFIG_DIR
+        CONFIG_DIR, DATA_DIR / "auth"  
     ]
     
     for directory in directories:

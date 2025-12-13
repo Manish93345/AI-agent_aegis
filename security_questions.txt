@@ -1,0 +1,8 @@
+security_questions = {
+            "What is your birth city?": "aurangabad",  # Example - CHANGE THIS!
+            "What was your first pet's name?": "browny",  # Example - CHANGE THIS!
+            "What is your mother's name?": "gudiya"  # Example - CHANGE THIS!
+        }
+
+
+python -m security.auth

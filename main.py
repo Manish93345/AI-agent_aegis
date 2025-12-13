@@ -158,6 +158,10 @@ class LISA:
         if not self.initialize_voice_system():
             print(f"{Colors.WARNING}Voice system initialization failed{Colors.ENDC}")
             print(f"{Colors.WARNING}Continuing without voice control...{Colors.ENDC}")
+        
+        if not self.initialize_auth_system():
+            print(f"{Colors.WARNING}Authentication system initialization failed{Colors.ENDC}")
+            print(f"{Colors.WARNING}Running in unsecured mode{Colors.ENDC}")
 
         # Initialize automation system
         if not self.initialize_automation_system():
@@ -254,6 +258,23 @@ class LISA:
     
     def _process_basic_command(self, command_text: str):
         """Process basic voice commands using command parser"""
+
+        # Check if authentication is required
+        if hasattr(self, 'auth_system'):
+            if self.auth_system.requires_authentication(command_text):
+                print(f"{Colors.YELLOW}⚠ This command requires authentication{Colors.ENDC}")
+
+                if not self.auth_system.authenticate_command(command_text):
+                    print(f"{Colors.FAIL}✗ Authentication failed. Command blocked.{Colors.ENDC}")
+
+                    # Speak error
+                    error_msg = "Authentication failed. Command not executed."
+                    print(f"{Colors.MAGENTA}LISA: {error_msg}{Colors.ENDC}")
+                    if hasattr(self, 'response_engine'):
+                        self.response_engine.speak(error_msg)
+                    return  # Stop processing this command
+
+
         # Parse the command
         parsed = self.command_parser.parse_command(command_text)
         
@@ -327,19 +348,24 @@ class LISA:
             app_name = app_map.get(action, parsed.get("parameters", {}).get("app_name", ""))
             
             if app_name:
-                print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+                # SPEAK: What she's about to do
+                opening_msg = f"Opening {app_name}..."
+                print(f"{Colors.MAGENTA}LISA: {opening_msg}{Colors.ENDC}")
                 if hasattr(self, 'response_engine'):
-                    self.response_engine.speak(response)
+                    self.response_engine.speak(opening_msg)
                 
                 if hasattr(self, 'automation_engine'):
                     success = self.automation_engine.open_application(app_name)
+                    
+                    # SPEAK: Result
                     if success:
-                        response = f"{app_name} opened successfully."
+                        success_msg = f"{app_name} opened successfully."
                     else:
-                        response = f"Failed to open {app_name}."
-                    print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+                        success_msg = f"Failed to open {app_name}."
+                    
+                    print(f"{Colors.MAGENTA}LISA: {success_msg}{Colors.ENDC}")
                     if hasattr(self, 'response_engine'):
-                        self.response_engine.speak(response)
+                        self.response_engine.speak(success_msg)
 
         elif action == "help":
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
@@ -389,6 +415,10 @@ class LISA:
     def run(self):
         """Main run loop"""
         try:
+            greeting = "Hello! I am Lisa, your personal assistant. Say 'Hey Lisa' to begin."
+            print(f"{Colors.MAGENTA}LISA: {greeting}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(greeting)
             print(f"\n{Colors.MAGENTA}LISA is now running...{Colors.ENDC}")
             print(f"{Colors.WARNING}Speak 'Hey Lisa' followed by a command{Colors.ENDC}")
             print(f"{Colors.WARNING}Press Ctrl+C to exit{Colors.ENDC}")
@@ -456,6 +486,27 @@ class LISA:
             print(f"\n\n{Colors.WARNING}Shutdown signal received...{Colors.ENDC}")
         finally:
             self.shutdown()
+
+    def initialize_auth_system(self):
+        """Initialize the authentication system"""
+        self.logger.info("Initializing authentication system...")
+        
+        try:
+            from security.auth import VoiceAuthenticator
+            
+            self.auth_system = VoiceAuthenticator()
+            
+            # Setup authentication (enroll or load)
+            if self.auth_system.setup_authentication():
+                self.logger.info(f"{Colors.GREEN}✓ Authentication system ready{Colors.ENDC}")
+                return True
+            else:
+                self.logger.warning("Authentication setup failed")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Auth system initialization failed: {e}")
+            return False
     
     def shutdown(self):
         """Graceful shutdown"""
