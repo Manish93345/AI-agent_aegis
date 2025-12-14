@@ -16,15 +16,17 @@
         "description": "Sensitive files protected, suspicious activity monitored",
         "actions": {
             "file_access": "protected_folders_locked",
-            "app_restrictions": ["taskmgr", "cmd", "powershell", "regedit"],
+            "app_restrictions": [ "regedit"],
             "network_access": "block_suspicious_sites",
             "monitoring": "detailed_logging",
             "encryption": "temporary_files"
         },
         "protected_folders": [
-            "C:/Users/[USER]/Documents/Important",
-            "C:/Users/[USER]/Desktop/Private",
-            "D:/Work/Confidential"
+            "D:/Saurabh_Data"
+        ],
+        "blocked_apps": [
+            "regedit.exe",
+            "msconfig.exe"
         ]
     },
     
@@ -42,6 +44,7 @@
             "microphone": "disable"
         },
         "essential_apps": ["notepad", "wordpad", "calculator"],
-        "encryption_key_path": "data/encrypted/master_key.aes"
+        "encryption_key_path": "data/encrypted/master_key.aes",
+        "blocked_apps": "all_non_essential"
     }
 }

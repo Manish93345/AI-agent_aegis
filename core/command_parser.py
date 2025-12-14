@@ -70,6 +70,15 @@ class CommandParser:
                 (r"help\s+me", "help"),
                 (r"list\s+commands", "help"),
                 (r"show\s+commands", "help"),
+            ],
+            "security": [
+                (r"security\s+level\s+1", "security_level_1"),
+                (r"security\s+level\s+2", "security_level_2"),
+                (r"security\s+level\s+3", "security_level_3"),
+                (r"lockdown\s+mode", "security_level_3"),
+                (r"panic\s+mode", "panic_mode"),
+                (r"emergency\s+shutdown", "emergency_shutdown"),
+                (r"shutdown\s+laptop", "emergency_shutdown"),
             ]
         }
     

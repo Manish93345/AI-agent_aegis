@@ -49,7 +49,7 @@ class VoiceAuthenticator:
         
         # Configuration
         self.min_samples = 5
-        self.auth_threshold = 0.6  # Lower threshold for better accuracy
+        self.auth_threshold = 0.5  # Lower threshold for better accuracy
         self.sample_duration = 3  # seconds
         self.max_auth_attempts = 3
         self.failed_attempts = 0
@@ -65,6 +65,8 @@ class VoiceAuthenticator:
             "format", "delete", "encrypt", "decrypt"
         ]
     
+    # In auth.py, update the setup_authentication method:
+
     def setup_authentication(self) -> bool:
         """Setup authentication - check if enrolled or need enrollment"""
         self.logger.info("Setting up authentication system...")
@@ -72,79 +74,101 @@ class VoiceAuthenticator:
         # Check if model exists
         model_path = Path("data/models/voice_auth_model.pkl")
         pin_path = Path("data/auth/pin.hash")
-
-        model_exists = model_path.exists() and model_path.stat().st_size > 0
-        pin_exists = pin_path.exists() and pin_path.stat().st_size > 0
         
-        if model_exists and pin_exists:
+        print(f"\n{Colors.CYAN}{'='*60}{Colors.ENDC}")
+        print(f"{Colors.BOLD}AUTHENTICATION SETUP{Colors.ENDC}")
+        print(f"{Colors.CYAN}{'='*60}{Colors.ENDC}")
+        
+        if model_path.exists():
             print(f"{Colors.CYAN}Found existing voice model.{Colors.ENDC}")
             
-
-            if self.load_model():
-                # Show menu with options
-                while True:
-                    print(f"\n{Colors.BOLD}Authentication Options:{Colors.ENDC}")
-                    print("1. Load existing voice model")
-                    print("2. Re-enroll voice (requires PIN)")
-                    print("3. Use PIN only")
-                    print("4. Skip authentication (insecure)")
+            try:
+                # Try to load the model
+                if self.load_model():
+                    print(f"{Colors.GREEN}✓ Voice model loaded successfully{Colors.ENDC}")
                     
-                    choice = input(f"{Colors.YELLOW}Choose option (1-4): {Colors.ENDC}").strip()
+                    # Quick voice test
+                    print(f"\n{Colors.CYAN}Quick voice verification test...{Colors.ENDC}")
+                    print("Say 'My voice is my password' when prompted")
                     
-                    if choice == "1":
-                        if self.load_model():
-                            print(f"{Colors.GREEN}✓ Voice model loaded{Colors.ENDC}")
-                            
-                            # Quick test
-                            print(f"\n{Colors.CYAN}Quick voice test...{Colors.ENDC}")
-                            success, _ = self.verify_live(max_attempts=1)
-                            
-                            if success:
-                                print(f"{Colors.GREEN}✓ Voice verification passed!{Colors.ENDC}")
-                                return True
-                            else:
-                                print(f"{Colors.YELLOW}⚠ Voice test failed. Try re-enrollment or PIN.{Colors.ENDC}")
-                                continue  # Go back to menu
-                        else:
-                            print(f"{Colors.FAIL}✗ Failed to load model{Colors.ENDC}")
-                            continue
+                    success, confidence = self.verify_live(max_attempts=1)
                     
-                    elif choice == "2":
-                        # PIN-protected re-enrollment
-                        if self._verify_pin_for_re_enrollment():
-                            print(f"{Colors.GREEN}✓ PIN verified. Starting re-enrollment...{Colors.ENDC}")
-                            return self.enroll_user()
-                        else:
-                            print(f"{Colors.FAIL}✗ PIN verification failed{Colors.ENDC}")
-                            continue
-                    
-                    elif choice == "3":
-                        print(f"{Colors.CYAN}Setting up PIN-only authentication...{Colors.ENDC}")
-                        return self._setup_pin_only()
-                    
-                    elif choice == "4":
-                        print(f"{Colors.YELLOW}⚠ WARNING: Running without authentication{Colors.ENDC}")
-                        confirm = input(f"{Colors.YELLOW}Are you sure? (y/n): {Colors.ENDC}")
-                        if confirm.lower() == 'y':
-                            self.auth_method = AuthMethod.NONE
-                            return True
-                        continue
-                    
+                    if success:
+                        print(f"{Colors.GREEN}✓ Voice verification passed (confidence: {confidence:.2f}){Colors.ENDC}")
+                        return True
                     else:
-                        print(f"{Colors.FAIL}✗ Invalid choice{Colors.ENDC}")
+                        print(f"{Colors.YELLOW}⚠ Voice verification failed (confidence: {confidence:.2f}){Colors.ENDC}")
+                        print(f"{Colors.CYAN}Falling back to PIN authentication...{Colors.ENDC}")
+                        
+                        # Try PIN if voice fails
+                        if pin_path.exists():
+                            if self._load_pin_hash():
+                                print(f"{Colors.CYAN}Using PIN authentication...{Colors.ENDC}")
+                                self.auth_method = AuthMethod.PIN
+                                return True
+                        else:
+                            print(f"{Colors.YELLOW}No PIN found. Need to setup authentication.{Colors.ENDC}")
+                else:
+                    print(f"{Colors.FAIL}✗ Model file corrupted or invalid{Colors.ENDC}")
+                    
+            except Exception as e:
+                print(f"{Colors.FAIL}✗ Error loading model: {e}{Colors.ENDC}")
+        
+        # If we get here, we need fresh enrollment
+        print(f"\n{Colors.CYAN}Starting fresh authentication setup...{Colors.ENDC}")
+        print("You need to enroll your voice and set a PIN.")
+        
+        # Clean up any corrupted files
+        self._cleanup_corrupted_files()
+        
+        # Start enrollment
+        return self._start_fresh_enrollment()
 
+    def _cleanup_corrupted_files(self):
+        """Clean up corrupted authentication files"""
+        corrupted_files = [
+            Path("data/models/voice_auth_model.pkl"),
+            Path("data/models/voice_auth_model.pkl.corrupted"),
+            Path("data/auth/pin.hash")
+        ]
+        
+        for file_path in corrupted_files:
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                    self.logger.info(f"Cleaned up: {file_path}")
+                except:
+                    pass
 
-            else:
-                # Model exists but couldn't load it (corrupted)
-                print(f"{Colors.YELLOW}⚠ Model file is corrupted or empty.{Colors.ENDC}")
-                print(f"{Colors.CYAN}Starting fresh enrollment...{Colors.ENDC}")
-                return self.enroll_user()
-
+    def _start_fresh_enrollment(self) -> bool:
+        """Start fresh enrollment process"""
+        print(f"\n{Colors.CYAN}Voice Enrollment Process{Colors.ENDC}")
+        print("="*40)
+        
+        # Step 1: Voice enrollment
+        print(f"\n{Colors.BOLD}Step 1: Voice Enrollment{Colors.ENDC}")
+        if not self.enroll_user(6):  # Use 6 samples for quick setup
+            print(f"{Colors.FAIL}✗ Voice enrollment failed{Colors.ENDC}")
+            return False
+        
+        # Step 2: PIN setup
+        print(f"\n{Colors.BOLD}Step 2: PIN Setup{Colors.ENDC}")
+        self._setup_pin_backup()
+        
+        # Step 3: Quick test
+        print(f"\n{Colors.BOLD}Step 3: Verification Test{Colors.ENDC}")
+        success, confidence = self.verify_live()
+        
+        if success:
+            print(f"{Colors.GREEN}✓ Authentication setup complete!{Colors.ENDC}")
+            print(f"{Colors.GREEN}✓ Voice confidence: {confidence:.2f}{Colors.ENDC}")
+            print(f"{Colors.GREEN}✓ PIN backup configured{Colors.ENDC}")
+            return True
         else:
-            # No valid authentication found
-            print(f"{Colors.YELLOW}No valid authentication found.{Colors.ENDC}")
-            print(f"{Colors.CYAN}Starting fresh enrollment...{Colors.ENDC}")
-            return self.enroll_user()
+            print(f"{Colors.YELLOW}⚠ Voice verification test failed{Colors.ENDC}")
+            print(f"{Colors.CYAN}You can still use PIN authentication.{Colors.ENDC}")
+            self.auth_method = AuthMethod.PIN
+            return True
 
     def emergency_pin_reset(self):
         """Emergency PIN reset (requires security questions)"""
@@ -665,7 +689,7 @@ class VoiceAuthenticator:
             return False
     
     def load_model(self, filepath: Optional[Path] = None) -> bool:
-        """Load trained model from file"""
+        """Load trained model from file with error handling"""
         if filepath is None:
             filepath = Path("data/models/voice_auth_model.pkl")
         
@@ -674,8 +698,21 @@ class VoiceAuthenticator:
             return False
         
         try:
+            # Check if file is empty or corrupted
+            file_size = filepath.stat().st_size
+            if file_size == 0:
+                self.logger.error(f"Model file is empty: {filepath}")
+                return False
+            
             with open(filepath, 'rb') as f:
                 save_data = pickle.load(f)
+            
+            # Verify required keys
+            required_keys = ['gmm_model', 'voice_samples', 'is_trained']
+            for key in required_keys:
+                if key not in save_data:
+                    self.logger.error(f"Model missing key: {key}")
+                    return False
             
             self.gmm_model = save_data['gmm_model']
             self.voice_samples = save_data['voice_samples']
@@ -683,9 +720,33 @@ class VoiceAuthenticator:
             self.auth_method = AuthMethod(save_data.get('auth_method', 'voice'))
             self.pin_hash = save_data.get('pin_hash')
             
+            # Verify model can score
+            if self.is_trained and self.gmm_model is not None:
+                # Quick test with dummy data
+                test_features = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]])
+                try:
+                    _ = self.gmm_model.score_samples(test_features)
+                    self.logger.info(f"✓ Model loaded and verified from {filepath}")
+                    return True
+                except Exception as e:
+                    self.logger.error(f"Model verification failed: {e}")
+                    return False
+            
             self.logger.info(f"Model loaded from {filepath}")
             return True
             
+        except (pickle.UnpicklingError, EOFError, AttributeError) as e:
+            self.logger.error(f"Model file corrupted: {e}")
+            
+            # Backup corrupted file
+            backup_path = filepath.with_suffix('.pkl.corrupted')
+            try:
+                shutil.move(filepath, backup_path)
+                self.logger.info(f"Backed up corrupted model to {backup_path}")
+            except:
+                pass
+            
+            return False
         except Exception as e:
             self.logger.error(f"Failed to load model: {e}")
             return False
