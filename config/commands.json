@@ -28,5 +28,62 @@
         "security_level_2": ["security level two", "restricted mode", "medium security"],
         "security_level_3": ["security level three", "lockdown mode", "maximum security"],
         "panic_mode": ["panic", "emergency", "hide everything", "red alert"]
+    },
+    "close_app": {
+        "description": "Close an application",
+        "examples": ["close browser", "exit word", "quit app"],
+        "parameters": ["app_name"],
+        "windows": "taskkill /IM {app}.exe /F",
+        "linux": "pkill {app}",
+        "darwin": "pkill {app}"
+    },
+    "search_web": {
+        "description": "Search the web",
+        "examples": ["search for python tutorials", "google weather", "find restaurants"],
+        "parameters": ["query"],
+        "default_browser": "chrome"
+    },
+    "create_file": {
+        "description": "Create a new file",
+        "examples": ["create text file", "make document", "new file notes"],
+        "parameters": ["filename", "content"],
+        "default_path": "./data"
+    },
+    "play_music": {
+        "description": "Play music",
+        "examples": ["play music", "play some songs", "start playlist"],
+        "parameters": ["platform", "query"],
+        "platforms": ["spotify", "youtube", "local"]
+    },
+    "system_info": {
+        "description": "Get system information",
+        "examples": ["system status", "computer info", "check resources"],
+        "parameters": []
+    },
+    "take_screenshot": {
+        "description": "Take a screenshot",
+        "examples": ["take screenshot", "capture screen", "screen grab"],
+        "parameters": ["filename"],
+        "save_path": "./data/screenshots"
+    },
+    "type_text": {
+        "description": "Type text automatically",
+        "examples": ["type hello world", "write document", "enter text"],
+        "parameters": ["text"]
+    },
+    "mouse_control": {
+        "description": "Control mouse",
+        "examples": ["move mouse left", "click here", "scroll down"],
+        "parameters": ["action", "x", "y"]
+    },
+    "volume_control": {
+        "description": "Control system volume",
+        "examples": ["volume up", "mute", "set volume 50"],
+        "parameters": ["action", "level"]
+    },
+    "schedule_task": {
+        "description": "Schedule a task",
+        "examples": ["remind me at 3pm", "schedule meeting", "set alarm"],
+        "parameters": ["time", "task"]
     }
 }

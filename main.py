@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LISA - Main Entry Point
+LISA - Main Entry Point with LLM Integration
 Learning Intelligent System Assistant
 """
 
@@ -8,7 +8,6 @@ Learning Intelligent System Assistant
 import sys
 import io
 import os
-from core.command_parser import CommandParser
 
 # Fix Windows console encoding for checkmarks/crosses
 if sys.platform == "win32":
@@ -21,8 +20,9 @@ if sys.platform == "win32":
     # Also try to set console code page
     os.system('chcp 65001 > nul')
 # ======================================================
-from security.auth import AuthMethod
+
 import time
+import json
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -33,10 +33,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils.constants import *
 from utils.file_utils import FileUtils
 from utils.os_utils import OSUtils
+from core.command_parser import CommandParser
+from core.llm_wrapper import get_llm_instance, test_llm
 
 
 class LISA:
-    """Main LISA system class"""
+    """Main LISA system class with LLM Integration"""
     
     def __init__(self):
         self.start_time = None
@@ -45,7 +47,10 @@ class LISA:
         self.is_running = False
         self.voice_listener = None
         self.assistant_name = "Lisa"
-        self.command_parser = CommandParser()
+        
+        # LLM Integration
+        self.llm = None
+        self.command_parser = None
         
         # Setup logging
         self.setup_logging()
@@ -79,7 +84,8 @@ class LISA:
             "commands": COMMANDS_CONFIG,
             "security": SECURITY_CONFIG,
             "user_prefs": USER_PREFS,
-            "system_config": SYSTEM_CONFIG
+            "system_config": SYSTEM_CONFIG,
+            "llm_config": CONFIG_DIR / "llm_config.json"
         }
         
         for name, path in config_files.items():
@@ -113,30 +119,66 @@ class LISA:
         else:
             self.logger.warning("✗ No NVIDIA GPU detected")
         
-        # Check dependencies
+        # Check core dependencies
         try:
             import speech_recognition
             import pyttsx3
             import pyautogui
             import psutil
-            import pyaudio
             self.logger.info("✓ Core dependencies available")
         except ImportError as e:
             self.logger.error(f"✗ Missing dependency: {e}")
             print(f"\n{Colors.FAIL}Missing dependency: {e}{Colors.ENDC}")
-            print(f"{Colors.WARNING}Run: pip install speechrecognition pyttsx3 pyautogui psutil pyaudio{Colors.ENDC}")
+            print(f"{Colors.WARNING}Run: pip install speechrecognition pyttsx3 pyautogui psutil{Colors.ENDC}")
             return False
         
         return True
     
+    def initialize_llm_system(self):
+        """Initialize the LLM system"""
+        self.logger.info("Initializing LLM system...")
+        
+        try:
+            # Get LLM config
+            llm_config = self.configs.get("llm_config", {})
+            
+            # Initialize LLM
+            self.llm = get_llm_instance(llm_config)
+            
+            # Test LLM connection
+            if self.llm.test_connection():
+                self.logger.info(f"{Colors.GREEN}✓ LLM system initialized successfully{Colors.ENDC}")
+                
+                # Initialize command parser with LLM
+                self.command_parser = CommandParser()
+                
+                # Show LLM info
+                print(f"{Colors.MAGENTA}LLM Model: {self.llm.llm_config.model}{Colors.ENDC}")
+                print(f"{Colors.MAGENTA}LLM Personality: Female Assistant (Lisa){Colors.ENDC}")
+                
+                return True
+            else:
+                self.logger.error("LLM connection test failed")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"LLM initialization failed: {e}")
+            print(f"{Colors.FAIL}LLM Error: {e}{Colors.ENDC}")
+            print(f"{Colors.WARNING}Falling back to rule-based system{Colors.ENDC}")
+            
+            # Fallback: initialize without LLM
+            self.command_parser = CommandParser()
+            return False
+    
     def display_banner(self):
         """Display startup banner"""
-        banner = """
+        banner = f"""
 ╔══════════════════════════════════════════════════════════╗
 ║                   L I S A   S Y S T E M                  ║
 ║          Learning Intelligent System Assistant           ║
 ║                                                          ║
-║     Version: 0.1.0 Alpha          Status: INITIALIZING   ║
+║     Version: 0.2.0 Alpha       Status: INITIALIZING      ║
+║     LLM: Ollama 3.1 8B        Personality: Female        ║
 ╚══════════════════════════════════════════════════════════╝
         """
         print(Colors.MAGENTA + banner + Colors.ENDC)
@@ -153,6 +195,11 @@ class LISA:
         # Load configurations
         if not self.load_configurations():
             print(f"{Colors.WARNING}Some configurations missing{Colors.ENDC}")
+        
+        # Initialize LLM system
+        if not self.initialize_llm_system():
+            print(f"{Colors.WARNING}LLM system initialization failed or unavailable{Colors.ENDC}")
+            print(f"{Colors.WARNING}Running in rule-based mode only{Colors.ENDC}")
         
         # Initialize voice system
         if not self.initialize_voice_system():
@@ -177,6 +224,8 @@ class LISA:
         print(f"  OS: {self.system_info['system']} {self.system_info['release']}")
         print(f"  Architecture: {self.system_info['machine']}")
         print(f"  Python: {self.system_info['python_version']}")
+        if self.llm:
+            print(f"  LLM: {self.llm.llm_config.model}")
         print(f"{Colors.MAGENTA}{'='*60}{Colors.ENDC}")
         
         self.start_time = datetime.now()
@@ -184,7 +233,7 @@ class LISA:
         
         self.logger.info("LISA initialization complete")
         print(f"\n{Colors.MAGENTA}✓ LISA System Ready!{Colors.ENDC}")
-        print(f"{Colors.BOLD}Assistant: {self.assistant_name}{Colors.ENDC}")
+        print(f"{Colors.BOLD}Assistant: {self.assistant_name} (Female AI){Colors.ENDC}")
         
         if self.voice_listener:
             print(f"{Colors.WARNING}Speak 'Hey Lisa' to activate{Colors.ENDC}")
@@ -259,6 +308,199 @@ class LISA:
         """Handle voice errors"""
         self.logger.error(f"Voice error: {error}")
         print(f"{Colors.FAIL}Voice error: {error}{Colors.ENDC}")
+    
+    def _process_command_with_llm(self, command_text: str):
+        """Process command using LLM-enhanced system"""
+        if not self.command_parser:
+            # Fallback to basic processing
+            return self._process_basic_command(command_text)
+        
+        try:
+            # Parse command with LLM
+            parsed = self.command_parser.parse_command(command_text, use_llm=True)
+            
+            # Get response
+            response = self.command_parser.get_response(parsed)
+            
+            # Speak response
+            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(response)
+            
+            # Execute if it's a command
+            execution = self.command_parser.get_command_execution(parsed)
+            if execution:
+                return self._execute_command(execution, parsed)
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"LLM command processing failed: {e}")
+            # Fallback to basic processing
+            return self._process_basic_command(command_text)
+    
+    def _execute_command(self, execution: Dict, parsed_command: Dict):
+        """Execute a parsed command"""
+        action = execution.get("action")
+        params = execution.get("parameters", {})
+        
+        self.logger.info(f"Executing command: {action} with params: {params}")
+        
+        try:
+            # Execute based on action
+            if action == "open_app":
+                return self._execute_open_app(params)
+            elif action == "close_app":
+                return self._execute_close_app(params)
+            elif action == "play_music":
+                return self._execute_play_music(params)
+            elif action == "search_web":
+                return self._execute_search_web(params)
+            elif action == "create_file":
+                return self._execute_create_file(params)
+            elif action == "system_info":
+                return self._execute_system_info(params)
+            else:
+                self.logger.warning(f"Unknown action: {action}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Command execution failed: {e}")
+            return False
+    
+    def _execute_open_app(self, params: Dict) -> bool:
+        """Execute open application command"""
+        app_name = params.get("app_name") or params.get("app")
+        if not app_name:
+            return False
+        
+        try:
+            import subprocess
+            import pyautogui
+            
+            # Map common app names
+            app_map = {
+                "chrome": "chrome",
+                "google": "chrome",
+                "browser": "chrome",
+                "word": "WINWORD",
+                "notepad": "notepad",
+                "calculator": "calc",
+                "vscode": "code",
+                "code": "code",
+                "explorer": "explorer",
+                "cmd": "cmd",
+                "terminal": "wt",
+                "powershell": "powershell",
+                "spotify": "spotify",
+                "youtube": "chrome https://youtube.com",
+                "firefox": "firefox"
+            }
+            
+            app_to_open = app_map.get(app_name.lower(), app_name)
+            
+            # Open the application
+            subprocess.Popen(app_to_open, shell=True)
+            
+            # Speak confirmation
+            confirmation = f"I've opened {app_name} for you."
+            print(f"{Colors.MAGENTA}LISA: {confirmation}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(confirmation)
+            
+            return True
+            
+        except Exception as e:
+            error_msg = f"Sorry, I couldn't open {app_name}."
+            print(f"{Colors.MAGENTA}LISA: {error_msg}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(error_msg)
+            return False
+    
+    def _execute_close_app(self, params: Dict) -> bool:
+        """Execute close application command"""
+        # Implementation for closing apps
+        return True
+    
+    def _execute_play_music(self, params: Dict) -> bool:
+        """Execute play music command"""
+        try:
+            import webbrowser
+            webbrowser.open("https://music.youtube.com")
+            
+            confirmation = "Playing music on YouTube Music."
+            print(f"{Colors.MAGENTA}LISA: {confirmation}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(confirmation)
+            
+            return True
+        except:
+            return False
+    
+    def _execute_search_web(self, params: Dict) -> bool:
+        """Execute web search command"""
+        query = params.get("query")
+        if not query:
+            return False
+        
+        try:
+            import urllib.parse
+            import webbrowser
+            
+            search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+            webbrowser.open(search_url)
+            
+            confirmation = f"Searching for {query}."
+            print(f"{Colors.MAGENTA}LISA: {confirmation}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(confirmation)
+            
+            return True
+        except:
+            return False
+    
+    def _execute_create_file(self, params: Dict) -> bool:
+        """Execute create file command"""
+        filename = params.get("filename")
+        if not filename:
+            filename = "new_file.txt"
+        
+        try:
+            from pathlib import Path
+            filepath = Path("data") / filename
+            filepath.write_text("Created by LISA\n")
+            
+            confirmation = f"Created file {filename} in the data folder."
+            print(f"{Colors.MAGENTA}LISA: {confirmation}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(confirmation)
+            
+            return True
+        except:
+            return False
+    
+    def _execute_system_info(self, params: Dict) -> bool:
+        """Execute system info command"""
+        try:
+            import psutil
+            import platform
+            
+            info = [
+                f"System: {platform.system()} {platform.release()}",
+                f"Processor: {platform.processor()}",
+                f"CPU Usage: {psutil.cpu_percent()}%",
+                f"Memory: {psutil.virtual_memory().percent}% used",
+                f"Python: {platform.python_version()}"
+            ]
+            
+            response = "System information: " + "; ".join(info)
+            print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
+            if hasattr(self, 'response_engine'):
+                self.response_engine.speak(response)
+            
+            return True
+        except:
+            return False
     
     def _process_basic_command(self, command_text: str):
         """Process basic voice commands using command parser"""
@@ -464,14 +706,21 @@ class LISA:
             print(f"{Colors.MAGENTA}LISA: {response}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(response)
+        pass
     
     def run(self):
-        """Main run loop"""
+        """Main run loop with LLM integration"""
         try:
-            greeting = "Hello! I am Lisa, your personal assistant. Say 'Hey Lisa' to begin."
+            # Greeting with LLM if available
+            if self.llm:
+                greeting = self.llm.generate_response("Introduce yourself as Lisa")
+            else:
+                greeting = "Hello! I am Lisa, your personal assistant. Say 'Hey Lisa' to begin."
+            
             print(f"{Colors.MAGENTA}LISA: {greeting}{Colors.ENDC}")
             if hasattr(self, 'response_engine'):
                 self.response_engine.speak(greeting)
+            
             print(f"\n{Colors.MAGENTA}LISA is now running...{Colors.ENDC}")
             print(f"{Colors.WARNING}Speak 'Hey Lisa' followed by a command{Colors.ENDC}")
             print(f"{Colors.WARNING}Press Ctrl+C to exit{Colors.ENDC}")
@@ -503,13 +752,12 @@ class LISA:
                         elif command_data["type"] == "command":
                             print(f"\n{Colors.BLUE}✓ Command: '{command_data['text']}'{Colors.ENDC}")
                             
-                            # Process basic commands
-                            self._process_basic_command(command_data['text'])
+                            # Process command with LLM
+                            self._process_command_with_llm(command_data['text'])
                             last_wake_time = time.time()
                             
                             print(f"\n{Colors.CYAN}[Sleeping - waiting for 'Hey Lisa']{Colors.ENDC}", end="", flush=True)
                             dot_count = 0
-                        
                 
                 # If we woke up but no command within 10 seconds, go back to sleep
                 if last_wake_time > 0 and time.time() - last_wake_time > 10:
@@ -616,6 +864,11 @@ def main():
     try:
         # Create LISA instance
         lisa = LISA()
+        
+        # Check for test mode
+        if len(sys.argv) > 1 and sys.argv[1] == "--test-llm":
+            test_llm()
+            return 0
         
         # Initialize system
         if lisa.initialize():

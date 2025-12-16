@@ -1,0 +1,38 @@
+{
+  "open_app": {
+    "action": "open_app",
+    "params": {},
+    "requires_confirmation": false,
+    "description": "Open an application"
+  },
+  "close_app": {
+    "action": "close_app",
+    "params": {},
+    "requires_confirmation": true,
+    "description": "Close an application"
+  },
+  "play_music": {
+    "action": "play_music",
+    "params": {},
+    "requires_confirmation": false,
+    "description": "Play music"
+  },
+  "search_web": {
+    "action": "search_web",
+    "params": {},
+    "requires_confirmation": false,
+    "description": "Search the web"
+  },
+  "create_file": {
+    "action": "create_file",
+    "params": {},
+    "requires_confirmation": false,
+    "description": "Create a new file"
+  },
+  "system_info": {
+    "action": "system_info",
+    "params": {},
+    "requires_confirmation": false,
+    "description": "Get system information"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "llm": {
+    "model": "llama3.1:8b",
+    "temperature": 0.7,
+    "max_tokens": 500,
+    "context_window": 4096,
+    "personality": "female",
+    "voice_gender": "female",
+    "response_style": "warm_and_helpful"
+  },
+  "system": {
+    "assistant_name": "Lisa",
+    "wake_word": "hey lisa",
+    "greeting_style": "friendly",
+    "confirmation_tone": "positive"
+  },
+  "commands": {
+    "use_llm_for_complex": true,
+    "fallback_to_rules": true,
+    "require_confirmation": false,
+    "timeout_seconds": 30
+  }
+}

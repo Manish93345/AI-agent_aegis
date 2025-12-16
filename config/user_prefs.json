@@ -31,5 +31,10 @@
         "backup_interval_hours": 24,
         "log_retention_days": 30,
         "gpu_acceleration": true
+    },
+    "learning": {
+    "allow_learning": true,
+    "suggest_improvements": true,
+    "adapt_to_patterns": true
     }
 }
