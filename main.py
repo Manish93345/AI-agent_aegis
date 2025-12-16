@@ -30,6 +30,7 @@ from datetime import datetime
 # Add project root to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from typing import Dict, List, Any, Optional
 from utils.constants import *
 from utils.file_utils import FileUtils
 from utils.os_utils import OSUtils
